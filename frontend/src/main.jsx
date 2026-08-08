@@ -132,28 +132,35 @@ function startIncomingRing() {
   if (!AudioContext) return () => {};
   const ctx = new AudioContext();
   const master = ctx.createGain();
-  master.gain.value = 0.05;
+  master.gain.value = 0.16;
   master.connect(ctx.destination);
   let stopped = false;
   let timeoutId;
   const beep = (delay) => {
-    const osc = ctx.createOscillator();
+    const oscA = ctx.createOscillator();
+    const oscB = ctx.createOscillator();
     const gain = ctx.createGain();
-    osc.type = "sine";
-    osc.frequency.setValueAtTime(880, ctx.currentTime + delay);
+    oscA.type = "sine";
+    oscB.type = "sine";
+    oscA.frequency.setValueAtTime(440, ctx.currentTime + delay);
+    oscB.frequency.setValueAtTime(480, ctx.currentTime + delay);
     gain.gain.setValueAtTime(0, ctx.currentTime + delay);
     gain.gain.linearRampToValueAtTime(1, ctx.currentTime + delay + 0.02);
-    gain.gain.linearRampToValueAtTime(0, ctx.currentTime + delay + 0.34);
-    osc.connect(gain);
+    gain.gain.setValueAtTime(1, ctx.currentTime + delay + 0.9);
+    gain.gain.linearRampToValueAtTime(0, ctx.currentTime + delay + 1.05);
+    oscA.connect(gain);
+    oscB.connect(gain);
     gain.connect(master);
-    osc.start(ctx.currentTime + delay);
-    osc.stop(ctx.currentTime + delay + 0.36);
+    oscA.start(ctx.currentTime + delay);
+    oscB.start(ctx.currentTime + delay);
+    oscA.stop(ctx.currentTime + delay + 1.08);
+    oscB.stop(ctx.currentTime + delay + 1.08);
   };
   const ring = () => {
     if (stopped) return;
     beep(0);
-    beep(0.55);
-    timeoutId = window.setTimeout(ring, 2600);
+    beep(1.25);
+    timeoutId = window.setTimeout(ring, 4200);
   };
   ring();
   return () => {
