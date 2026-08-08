@@ -1,0 +1,16 @@
+services:
+  - type: web
+    name: novawear-simulator
+    runtime: docker
+    plan: starter
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    disk:
+      name: novawear-data
+      mountPath: /data
+      sizeGB: 1
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DB_PATH
+        value: /data/novawear.sqlite

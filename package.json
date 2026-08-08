@@ -1,0 +1,17 @@
+{
+  "name": "novawear-customer-service-simulator",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "install:all": "npm --prefix backend install && npm --prefix frontend install",
+    "build": "npm --prefix frontend run build",
+    "seed": "npm --prefix backend run seed",
+    "start": "npm --prefix backend start",
+    "deploy:build": "npm run install:all && npm run build && npm run seed",
+    "vercel-build": "npm --prefix frontend install && npm --prefix frontend run build:vercel"
+  },
+  "engines": {
+    "node": ">=24"
+  }
+}
