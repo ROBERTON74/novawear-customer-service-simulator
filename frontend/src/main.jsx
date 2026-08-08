@@ -302,7 +302,13 @@ function Training({ api, agentName }) {
   useEffect(() => { if (call?.status !== "active") return; const t = setInterval(() => setElapsed((v) => v + 1), 1000); return () => clearInterval(t); }, [call]);
   const newCall = async () => { setScore(null); setElapsed(0); setState({ actions: {}, verification: {} }); setCall(await api("/training/new-call", { method: "POST" })); };
   const start = async () => { await api(`/training/${call.callId || call.id}/start`, { method: "POST" }); setCall({ ...call, status: "active" }); };
-  const finish = async () => { const data = await api(`/training/${call.callId || call.id}/finish`, { method: "POST", body: JSON.stringify(state) }); setScore(data); };
+  const finish = async () => {
+    const data = await api(`/training/${call.callId || call.id}/finish`, { method: "POST", body: JSON.stringify(state) });
+    setScore(data);
+    setCall(null);
+    setElapsed(0);
+    setState({ actions: {}, verification: {} });
+  };
   const updateState = (next) => { setState(next); if (call) api(`/training/${call.callId || call.id}/verify`, { method: "PATCH", body: JSON.stringify(next.verification || {}) }).catch(() => {}); };
   return <Section title="Centro de entrenamiento">
     {dashboard && <div className="training-dpa"><button className="metric dpa-metric" type="button"><span>NO DPA</span><strong>{dashboard.dpaFailed}</strong></button></div>}
