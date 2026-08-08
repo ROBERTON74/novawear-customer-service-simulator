@@ -109,6 +109,7 @@ function Dashboard({ api }) {
     <div className="metrics">
       <Metric label="Clientes" value={data.customers} /><Metric label="Pedidos" value={data.orders} />
       <Metric label="Retrasados" value={data.delayed} /><Metric label="Cancelados" value={data.cancelled} />
+      <button className="metric dpa-metric" type="button"><span>DPA no pasada</span><strong>{data.dpaFailed}</strong></button>
     </div>
     <h2>Últimas llamadas</h2><Table rows={data.calls} cols={["id", "scenario_type", "started_at", "finished_at", "score"]} />
   </Section>;

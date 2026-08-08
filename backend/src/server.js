@@ -29,6 +29,16 @@ function auth(req, res, next) {
   next();
 }
 
+function hasDpaEmailMismatch(customerId) {
+  return Number(customerId) % 100 >= 1 && Number(customerId) % 100 <= 23;
+}
+
+function callEmailFor(customer) {
+  if (!hasDpaEmailMismatch(customer.customer_id || customer.id)) return customer.email;
+  const [local, domain = "example.com"] = String(customer.email).split("@");
+  return `${local}.consulta@${domain}`;
+}
+
 function orderDetails(orderNumberOrId, byNumber = true) {
   const where = byNumber ? "o.order_number = ?" : "o.id = ?";
   const order = row(`SELECT o.*, c.customer_number, c.first_name, c.last_name, c.dni, c.email, c.phone, c.address, c.postal_code, c.city, c.country, ca.name carrier_name, ca.email carrier_email, ca.phone carrier_phone
@@ -57,6 +67,7 @@ app.get("/api/dashboard", auth, (_req, res) => {
     orders: row("SELECT COUNT(*) count FROM orders").count,
     delayed: row("SELECT COUNT(*) count FROM orders WHERE order_status='RETRASADO'").count,
     cancelled: row("SELECT COUNT(*) count FROM orders WHERE order_status='CANCELADO'").count,
+    dpaFailed: row("SELECT COUNT(*) count FROM customers WHERE id % 100 BETWEEN 1 AND 23").count,
     calls: all("SELECT * FROM training_calls ORDER BY id DESC LIMIT 8")
   });
 });
@@ -108,7 +119,7 @@ app.post("/api/training/new-call", auth, (_req, res) => {
   run("UPDATE training_calls SET active=0 WHERE active=1");
   const order = row(`SELECT o.*, c.first_name, c.last_name, c.phone, c.email, c.address, c.postal_code FROM orders o JOIN customers c ON c.id=o.customer_id ORDER BY RANDOM() LIMIT 1`);
   const result = run("INSERT INTO training_calls (customer_id, order_id, scenario_type, active, verification_json, actions_json) VALUES (?, ?, ?, 1, '{}', '{}')", [order.customer_id, order.id, order.order_status]);
-  res.json({ callId: result.lastInsertRowid, customerName: `${order.first_name} ${order.last_name}`, orderNumber: order.order_number, phone: order.phone, email: order.email, address: order.address, postalCode: order.postal_code, reason: "Consulta sobre pedido", status: "incoming" });
+  res.json({ callId: result.lastInsertRowid, customerName: `${order.first_name} ${order.last_name}`, orderNumber: order.order_number, phone: order.phone, email: callEmailFor(order), address: order.address, postalCode: order.postal_code, reason: "Consulta sobre pedido", status: "incoming" });
 });
 
 app.post("/api/training/:id/start", auth, (req, res) => {
@@ -118,6 +129,7 @@ app.post("/api/training/:id/start", auth, (req, res) => {
 
 app.get("/api/training/active", auth, (_req, res) => {
   const call = row(`SELECT t.*, o.order_number, c.first_name, c.last_name, c.phone, c.email, c.address, c.postal_code FROM training_calls t JOIN orders o ON o.id=t.order_id JOIN customers c ON c.id=t.customer_id WHERE t.active=1 ORDER BY t.id DESC LIMIT 1`);
+  if (call) call.email = callEmailFor(call);
   res.json(call || null);
 });
 

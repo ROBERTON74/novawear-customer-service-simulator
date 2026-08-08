@@ -24,6 +24,16 @@ function rng(seed) {
   };
 }
 
+function hasDpaEmailMismatch(customerId) {
+  return Number(customerId) % 100 >= 1 && Number(customerId) % 100 <= 23;
+}
+
+function callEmailFor(customer) {
+  if (!hasDpaEmailMismatch(customer.id)) return customer.email;
+  const [local, domain = "example.com"] = String(customer.email).split("@");
+  return `${local}.consulta@${domain}`;
+}
+
 function makeStore() {
   const random = rng(284739);
   const pick = (list) => list[Math.floor(random() * list.length)];
@@ -162,6 +172,7 @@ export async function localApi(path, options = {}) {
     orders: store.orders.length,
     delayed: store.orders.filter((o) => o.order_status === "RETRASADO").length,
     cancelled: store.orders.filter((o) => o.order_status === "CANCELADO").length,
+    dpaFailed: store.customers.filter((c) => hasDpaEmailMismatch(c.id)).length,
     calls: store.trainingCalls.slice(-8).reverse()
   };
   if (path.startsWith("/customers/search")) {
@@ -193,7 +204,7 @@ export async function localApi(path, options = {}) {
     if (!call) return null;
     const order = store.orders.find((o) => o.id === call.order_id);
     const customer = store.customers.find((c) => c.id === call.customer_id);
-    return { ...call, order_number: order.order_number, first_name: customer.first_name, last_name: customer.last_name, phone: customer.phone, email: customer.email, address: customer.address, postal_code: customer.postal_code };
+    return { ...call, order_number: order.order_number, first_name: customer.first_name, last_name: customer.last_name, phone: customer.phone, email: callEmailFor(customer), address: customer.address, postal_code: customer.postal_code };
   }
   if (path === "/training/new-call" && method === "POST") {
     store.trainingCalls.forEach((c) => { c.active = 0; });
@@ -201,7 +212,7 @@ export async function localApi(path, options = {}) {
     const customer = store.customers.find((c) => c.id === order.customer_id);
     const call = { id: store.trainingCalls.length + 1, customer_id: customer.id, order_id: order.id, scenario_type: order.order_status, started_at: null, finished_at: null, result: null, score: null, actions_json: "{}", verification_json: "{}", active: 1 };
     store.trainingCalls.push(call);
-    return withSave({ callId: call.id, customerName: `${customer.first_name} ${customer.last_name}`, orderNumber: order.order_number, phone: customer.phone, email: customer.email, address: customer.address, postalCode: customer.postal_code, reason: "Consulta sobre pedido", status: "incoming" });
+    return withSave({ callId: call.id, customerName: `${customer.first_name} ${customer.last_name}`, orderNumber: order.order_number, phone: customer.phone, email: callEmailFor(customer), address: customer.address, postalCode: customer.postal_code, reason: "Consulta sobre pedido", status: "incoming" });
   }
   const trainingMatch = path.match(/^\/training\/(\d+)\/(start|verify|actions|finish)$/);
   if (trainingMatch) {
