@@ -72,12 +72,6 @@ app.get("/api/dashboard", auth, (_req, res) => {
   });
 });
 
-app.get("/api/dpa", auth, (_req, res) => {
-  const customers = all(`SELECT id, customer_number, first_name, last_name, email, phone, address, postal_code
-    FROM customers WHERE id % 100 BETWEEN 1 AND 23 ORDER BY id`);
-  res.json(customers.map((customer) => ({ ...customer, call_email: callEmailFor(customer), dpa_status: "NO DPA" })));
-});
-
 app.get("/api/customers/search", auth, (req, res) => {
   const q = `%${(req.query.q || "").trim()}%`;
   const customers = all(`SELECT DISTINCT c.*, (SELECT COUNT(*) FROM orders o WHERE o.customer_id=c.id) order_count

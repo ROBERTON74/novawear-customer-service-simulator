@@ -175,11 +175,6 @@ export async function localApi(path, options = {}) {
     dpaFailed: store.customers.filter((c) => hasDpaEmailMismatch(c.id)).length,
     calls: store.trainingCalls.slice(-8).reverse()
   };
-  if (path === "/dpa") {
-    return store.customers
-      .filter((c) => hasDpaEmailMismatch(c.id))
-      .map((c) => ({ ...c, call_email: callEmailFor(c), dpa_status: "NO DPA" }));
-  }
   if (path.startsWith("/customers/search")) {
     const q = decodeURIComponent(path.split("q=")[1] || "").toLowerCase();
     return store.customers.filter((c) => {
