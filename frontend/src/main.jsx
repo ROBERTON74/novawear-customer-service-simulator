@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { BrowserRouter, Link, Navigate, Route, Routes, useLocation } from "react-router-dom";
 import { CheckCircle2, Clock, Copy, CreditCard, ExternalLink, History, Inbox, LayoutDashboard, Mail, PackageSearch, Phone, Search, Truck, UserRound } from "lucide-react";
@@ -125,6 +125,42 @@ function CopyValue({ value }) {
     setTimeout(() => setCopied(false), 1100);
   };
   return <span className="copy-value"><span>{value}</span><button className="copy-btn" type="button" title={copied ? "Copiado" : "Copiar"} onClick={copy}><Copy size={14} /></button></span>;
+}
+
+function startIncomingRing() {
+  const AudioContext = window.AudioContext || window.webkitAudioContext;
+  if (!AudioContext) return () => {};
+  const ctx = new AudioContext();
+  const master = ctx.createGain();
+  master.gain.value = 0.05;
+  master.connect(ctx.destination);
+  let stopped = false;
+  let timeoutId;
+  const beep = (delay) => {
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = "sine";
+    osc.frequency.setValueAtTime(880, ctx.currentTime + delay);
+    gain.gain.setValueAtTime(0, ctx.currentTime + delay);
+    gain.gain.linearRampToValueAtTime(1, ctx.currentTime + delay + 0.02);
+    gain.gain.linearRampToValueAtTime(0, ctx.currentTime + delay + 0.34);
+    osc.connect(gain);
+    gain.connect(master);
+    osc.start(ctx.currentTime + delay);
+    osc.stop(ctx.currentTime + delay + 0.36);
+  };
+  const ring = () => {
+    if (stopped) return;
+    beep(0);
+    beep(0.55);
+    timeoutId = window.setTimeout(ring, 2600);
+  };
+  ring();
+  return () => {
+    stopped = true;
+    window.clearTimeout(timeoutId);
+    ctx.close().catch(() => {});
+  };
 }
 
 function CustomerSearch({ api, onVerified }) {
@@ -285,6 +321,7 @@ function Orders({ api, agentName }) {
 
 function Training({ api, agentName }) {
   const [call, setCall] = useState(null);
+  const stopRingRef = useRef(null);
   const [elapsed, setElapsed] = useState(0);
   const [dashboard, setDashboard] = useState(null);
   const [state, setState] = useState({ actions: {}, verification: {} });
@@ -300,9 +337,25 @@ function Training({ api, agentName }) {
     return () => clearInterval(t);
   }, [api, call?.status]);
   useEffect(() => { if (call?.status !== "active") return; const t = setInterval(() => setElapsed((v) => v + 1), 1000); return () => clearInterval(t); }, [call]);
-  const newCall = async () => { setScore(null); setElapsed(0); setState({ actions: {}, verification: {} }); setCall(await api("/training/new-call", { method: "POST" })); };
-  const start = async () => { await api(`/training/${call.callId || call.id}/start`, { method: "POST" }); setCall({ ...call, status: "active" }); };
+  useEffect(() => () => stopRingRef.current?.(), []);
+  const newCall = async () => {
+    stopRingRef.current?.();
+    stopRingRef.current = startIncomingRing();
+    setScore(null);
+    setElapsed(0);
+    setState({ actions: {}, verification: {} });
+    const nextCall = await api("/training/new-call", { method: "POST" });
+    setCall(nextCall);
+  };
+  const start = async () => {
+    stopRingRef.current?.();
+    stopRingRef.current = null;
+    await api(`/training/${call.callId || call.id}/start`, { method: "POST" });
+    setCall({ ...call, status: "active" });
+  };
   const finish = async () => {
+    stopRingRef.current?.();
+    stopRingRef.current = null;
     const data = await api(`/training/${call.callId || call.id}/finish`, { method: "POST", body: JSON.stringify(state) });
     setScore(data);
     setCall(null);
