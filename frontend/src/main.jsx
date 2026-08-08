@@ -109,7 +109,7 @@ function Dashboard({ api }) {
     <div className="metrics">
       <Metric label="Clientes" value={data.customers} /><Metric label="Pedidos" value={data.orders} />
       <Metric label="Retrasados" value={data.delayed} /><Metric label="Cancelados" value={data.cancelled} />
-      <button className="metric dpa-metric" type="button"><span>NO DPA</span><strong>{data.dpaFailed}</strong></button>
+      <Link className="metric dpa-metric" to="/dpa"><span>NO DPA</span><strong>{data.dpaFailed}</strong></Link>
     </div>
     <h2>Últimas llamadas</h2><Table rows={data.calls} cols={["id", "scenario_type", "started_at", "finished_at", "score"]} />
   </Section>;
@@ -371,7 +371,7 @@ function Training({ api, agentName }) {
   };
   const updateState = (next) => { setState(next); if (call) api(`/training/${call.callId || call.id}/verify`, { method: "PATCH", body: JSON.stringify(next.verification || {}) }).catch(() => {}); };
   return <Section title="Centro de entrenamiento">
-    {dashboard && <div className="training-dpa"><button className="metric dpa-metric" type="button"><span>NO DPA</span><strong>{dashboard.dpaFailed}</strong></button></div>}
+    {dashboard && <div className="training-dpa"><Link className="metric dpa-metric" to="/dpa"><span>NO DPA</span><strong>{dashboard.dpaFailed}</strong></Link></div>}
     <div className="training-bar">
       <button onClick={newCall}>Nueva llamada</button>
       <button className="secondary" onClick={() => window.open("/crm", "novawear-crm", "width=1200,height=800")}><ExternalLink size={16} /> Abrir CRM</button>
@@ -396,6 +396,12 @@ function SimpleTablePage({ api, title, path, cols }) {
   return <Section title={title}><Table rows={rows} cols={cols} /></Section>;
 }
 
+function DpaPage({ api }) {
+  const [rows, setRows] = useState([]);
+  useEffect(() => { api("/dpa").then(setRows); }, [api]);
+  return <Section title="Registros NO DPA"><Table rows={rows} cols={["dpa_status", "customer_number", "first_name", "last_name", "email", "call_email", "phone", "address", "postal_code"]} /></Section>;
+}
+
 function Table({ rows = [], cols = [] }) {
   if (!rows.length) return <p className="muted">Sin registros.</p>;
   return <div className="table-wrap"><table><thead><tr>{cols.map((c) => <th key={c}>{label(c)}</th>)}</tr></thead><tbody>{rows.map((r, i) => <tr key={r.id || i}>{cols.map((c) => <td key={c}>{formatCell(c, r[c])}</td>)}</tr>)}</tbody></table></div>;
@@ -408,6 +414,7 @@ function App() {
   return <BrowserRouter><Layout user={auth.user}><Routes>
     <Route path="/" element={<Navigate to="/training" />} />
     <Route path="/dashboard" element={<Dashboard api={api} />} />
+    <Route path="/dpa" element={<DpaPage api={api} />} />
     <Route path="/crm" element={<CRM api={api} />} />
     <Route path="/orders" element={<Orders api={api} agentName={auth.user?.name} />} />
     <Route path="/training" element={<Training api={api} agentName={auth.user?.name} />} />
@@ -418,7 +425,7 @@ function App() {
   </Routes></Layout></BrowserRouter>;
 }
 
-function label(k) { return ({ customerIdentification: "Identificación del cliente", verified: "Datos verificados", orderLocated: "Pedido localizado", actionApplied: "Acción aplicada", customerEmail: "Email cliente", carrierEmail: "Email transportista", crmNote: "Nota CRM", first_name: "Nombre", last_name: "Apellidos", order_number: "Pedido", order_status: "Estado", total_amount: "Importe", unit_price: "Precio", quantity: "Cantidad" }[k] || k.replaceAll("_", " ")); }
+function label(k) { return ({ customerIdentification: "Identificación del cliente", verified: "Datos verificados", orderLocated: "Pedido localizado", actionApplied: "Acción aplicada", customerEmail: "Email cliente", carrierEmail: "Email transportista", crmNote: "Nota CRM", dpa_status: "DPA", customer_number: "ID Cliente", first_name: "Nombre", last_name: "Apellidos", email: "Email ficha", call_email: "Email facilitado", postal_code: "Código postal", order_number: "Pedido", order_status: "Estado", total_amount: "Importe", unit_price: "Precio", quantity: "Cantidad" }[k] || k.replaceAll("_", " ")); }
 function fmt(v) { return v ? new Date(v).toLocaleDateString("es-ES") : ""; }
 function fmtTime(v) { return v ? new Date(v).toLocaleString("es-ES") : ""; }
 function money(v) { return new Intl.NumberFormat("es-ES", { style: "currency", currency: "EUR" }).format(v || 0); }
