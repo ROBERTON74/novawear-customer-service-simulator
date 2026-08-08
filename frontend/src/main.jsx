@@ -109,7 +109,7 @@ function Dashboard({ api }) {
     <div className="metrics">
       <Metric label="Clientes" value={data.customers} /><Metric label="Pedidos" value={data.orders} />
       <Metric label="Retrasados" value={data.delayed} /><Metric label="Cancelados" value={data.cancelled} />
-      <button className="metric dpa-metric" type="button"><span>DPA no pasada</span><strong>{data.dpaFailed}</strong></button>
+      <button className="metric dpa-metric" type="button"><span>NO DPA</span><strong>{data.dpaFailed}</strong></button>
     </div>
     <h2>Últimas llamadas</h2><Table rows={data.calls} cols={["id", "scenario_type", "started_at", "finished_at", "score"]} />
   </Section>;
@@ -286,9 +286,11 @@ function Orders({ api, agentName }) {
 function Training({ api, agentName }) {
   const [call, setCall] = useState(null);
   const [elapsed, setElapsed] = useState(0);
+  const [dashboard, setDashboard] = useState(null);
   const [state, setState] = useState({ actions: {}, verification: {} });
   const [score, setScore] = useState(null);
   useEffect(() => { api("/training/active").then((c) => c && setCall({ ...c, status: c.started_at ? "active" : "incoming" })); }, [api]);
+  useEffect(() => { api("/dashboard").then(setDashboard); }, [api]);
   useEffect(() => {
     if (call?.status !== "active") return;
     const t = setInterval(async () => {
@@ -303,6 +305,7 @@ function Training({ api, agentName }) {
   const finish = async () => { const data = await api(`/training/${call.callId || call.id}/finish`, { method: "POST", body: JSON.stringify(state) }); setScore(data); };
   const updateState = (next) => { setState(next); if (call) api(`/training/${call.callId || call.id}/verify`, { method: "PATCH", body: JSON.stringify(next.verification || {}) }).catch(() => {}); };
   return <Section title="Centro de entrenamiento">
+    {dashboard && <div className="training-dpa"><button className="metric dpa-metric" type="button"><span>NO DPA</span><strong>{dashboard.dpaFailed}</strong></button></div>}
     <div className="training-bar">
       <button onClick={newCall}>Nueva llamada</button>
       <button className="secondary" onClick={() => window.open("/crm", "novawear-crm", "width=1200,height=800")}><ExternalLink size={16} /> Abrir CRM</button>
