@@ -109,7 +109,6 @@ function Dashboard({ api }) {
     <div className="metrics">
       <Metric label="Clientes" value={data.customers} /><Metric label="Pedidos" value={data.orders} />
       <Metric label="Retrasados" value={data.delayed} /><Metric label="Cancelados" value={data.cancelled} />
-      <button className="metric dpa-metric" type="button" aria-label="Registros NO DPA"><span>NO DPA</span><strong>{data.dpaFailed}</strong></button>
     </div>
     <h2>Últimas llamadas</h2><Table rows={data.calls} cols={["id", "scenario_type", "started_at", "finished_at", "score"]} />
   </Section>;
@@ -330,11 +329,9 @@ function Training({ api, agentName }) {
   const [call, setCall] = useState(null);
   const stopRingRef = useRef(null);
   const [elapsed, setElapsed] = useState(0);
-  const [dashboard, setDashboard] = useState(null);
   const [state, setState] = useState({ actions: {}, verification: {} });
   const [score, setScore] = useState(null);
   useEffect(() => { api("/training/active").then((c) => c && setCall({ ...c, status: c.started_at ? "active" : "incoming" })); }, [api]);
-  useEffect(() => { api("/dashboard").then(setDashboard); }, [api]);
   useEffect(() => {
     if (call?.status !== "active") return;
     const t = setInterval(async () => {
@@ -371,7 +368,6 @@ function Training({ api, agentName }) {
   };
   const updateState = (next) => { setState(next); if (call) api(`/training/${call.callId || call.id}/verify`, { method: "PATCH", body: JSON.stringify(next.verification || {}) }).catch(() => {}); };
   return <Section title="Centro de entrenamiento">
-    {dashboard && <div className="training-dpa"><button className="metric dpa-metric" type="button" aria-label="Registros NO DPA"><span>NO DPA</span><strong>{dashboard.dpaFailed}</strong></button></div>}
     <div className="training-bar">
       <button onClick={newCall}>Nueva llamada</button>
       <button className="secondary" onClick={() => window.open("/crm", "novawear-crm", "width=1200,height=800")}><ExternalLink size={16} /> Abrir CRM</button>
@@ -396,6 +392,38 @@ function SimpleTablePage({ api, title, path, cols }) {
   return <Section title={title}><Table rows={rows} cols={cols} /></Section>;
 }
 
+function OwnerDashboard({ api }) {
+  const [rows, setRows] = useState([]);
+  const isLocal = ["localhost", "127.0.0.1"].includes(window.location.hostname);
+  useEffect(() => { if (isLocal) api("/history").then(setRows); }, [api, isLocal]);
+  if (!isLocal) return <Section title="Dashboard privado"><div className="panel"><p className="muted">Panel disponible solo desde tu ordenador en localhost.</p></div></Section>;
+  const finished = rows.filter((row) => row.started_at && row.finished_at);
+  const daily = Object.values(finished.reduce((acc, row) => {
+    const day = new Date(row.started_at).toLocaleDateString("es-ES");
+    const start = new Date(row.started_at);
+    const end = new Date(row.finished_at);
+    const current = acc[day] || { day, first_start: row.started_at, last_end: row.finished_at, records: 0, seconds: 0 };
+    current.records += 1;
+    current.seconds += Math.max(0, Math.round((end - start) / 1000));
+    if (start < new Date(current.first_start)) current.first_start = row.started_at;
+    if (end > new Date(current.last_end)) current.last_end = row.finished_at;
+    acc[day] = current;
+    return acc;
+  }, {})).sort((a, b) => new Date(b.last_end) - new Date(a.last_end));
+  return <Section title="Dashboard privado">
+    <div className="metrics">
+      <Metric label="Días con actividad" value={daily.length} />
+      <Metric label="Registros tratados" value={finished.length} />
+      <Metric label="Tiempo total" value={duration(finished.reduce((sum, row) => sum + Math.max(0, (new Date(row.finished_at) - new Date(row.started_at)) / 1000), 0))} />
+      <Metric label="Última sesión" value={daily[0]?.day || "Sin datos"} />
+    </div>
+    <h2>Avance diario de Mari Luz</h2>
+    <Table rows={daily} cols={["day", "first_start", "last_end", "seconds", "records"]} />
+    <h2>Últimos registros tratados</h2>
+    <Table rows={finished.slice(0, 25)} cols={["id", "order_number", "first_name", "last_name", "scenario_type", "started_at", "finished_at", "score"]} />
+  </Section>;
+}
+
 function Table({ rows = [], cols = [] }) {
   if (!rows.length) return <p className="muted">Sin registros.</p>;
   return <div className="table-wrap"><table><thead><tr>{cols.map((c) => <th key={c}>{label(c)}</th>)}</tr></thead><tbody>{rows.map((r, i) => <tr key={r.id || i}>{cols.map((c) => <td key={c}>{formatCell(c, r[c])}</td>)}</tr>)}</tbody></table></div>;
@@ -408,6 +436,7 @@ function App() {
   return <BrowserRouter><Layout user={auth.user}><Routes>
     <Route path="/" element={<Navigate to="/training" />} />
     <Route path="/dashboard" element={<Dashboard api={api} />} />
+    <Route path="/owner-dashboard" element={<OwnerDashboard api={api} />} />
     <Route path="/crm" element={<CRM api={api} />} />
     <Route path="/orders" element={<Orders api={api} agentName={auth.user?.name} />} />
     <Route path="/training" element={<Training api={api} agentName={auth.user?.name} />} />
@@ -418,14 +447,21 @@ function App() {
   </Routes></Layout></BrowserRouter>;
 }
 
-function label(k) { return ({ customerIdentification: "Identificación del cliente", verified: "Datos verificados", orderLocated: "Pedido localizado", actionApplied: "Acción aplicada", customerEmail: "Email cliente", carrierEmail: "Email transportista", crmNote: "Nota CRM", customer_number: "ID Cliente", first_name: "Nombre", last_name: "Apellidos", email: "Email", postal_code: "Código postal", order_number: "Pedido", order_status: "Estado", total_amount: "Importe", unit_price: "Precio", quantity: "Cantidad" }[k] || k.replaceAll("_", " ")); }
+function label(k) { return ({ customerIdentification: "Identificación del cliente", verified: "Datos verificados", orderLocated: "Pedido localizado", actionApplied: "Acción aplicada", customerEmail: "Email cliente", carrierEmail: "Email transportista", crmNote: "Nota CRM", customer_number: "ID Cliente", first_name: "Nombre", last_name: "Apellidos", email: "Email", postal_code: "Código postal", day: "Día", first_start: "Hora inicio", last_end: "Hora fin", seconds: "Tiempo conexión", records: "Registros tratados", order_number: "Pedido", order_status: "Estado", total_amount: "Importe", unit_price: "Precio", quantity: "Cantidad" }[k] || k.replaceAll("_", " ")); }
 function fmt(v) { return v ? new Date(v).toLocaleDateString("es-ES") : ""; }
 function fmtTime(v) { return v ? new Date(v).toLocaleString("es-ES") : ""; }
 function money(v) { return new Intl.NumberFormat("es-ES", { style: "currency", currency: "EUR" }).format(v || 0); }
+function duration(seconds) {
+  const total = Math.round(seconds || 0);
+  const h = Math.floor(total / 3600);
+  const m = Math.floor((total % 3600) / 60);
+  const s = total % 60;
+  return h ? `${h}h ${String(m).padStart(2, "0")}m` : `${m}m ${String(s).padStart(2, "0")}s`;
+}
 function statusClass(s) { return s === "EN TIEMPO" ? "ok" : s === "RETRASADO" ? "warn" : "danger"; }
 function delayDays(d) { return Math.max(1, Math.ceil((new Date("2026-08-08") - new Date(d)) / 86400000)); }
 function mmss(s) { return `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`; }
-function formatCell(k, v) { if (k.includes("date") || k.includes("created") || k.includes("sent") || k.includes("started") || k.includes("finished")) return fmtTime(v); if (k.includes("amount") || k.includes("price")) return money(v); return String(v ?? ""); }
+function formatCell(k, v) { if (k === "seconds") return duration(v); if (k.includes("date") || k.includes("created") || k.includes("sent") || k.includes("started") || k.includes("finished") || k.includes("start") || k.includes("end")) return fmtTime(v); if (k.includes("amount") || k.includes("price")) return money(v); return String(v ?? ""); }
 async function syncActive(api, type, payload) {
   try {
     const active = await api("/training/active");
