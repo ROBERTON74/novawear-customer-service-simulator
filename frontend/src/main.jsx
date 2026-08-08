@@ -308,7 +308,7 @@ function Training({ api, agentName }) {
       <button className="secondary" onClick={() => window.open("/orders", "novawear-orders", "width=1200,height=800")}><ExternalLink size={16} /> Abrir pedidos</button>
     </div>
     {call && <div className="call-card">
-      <div><span className="pill incoming">Llamada entrante</span><h2><CopyValue value={call.customerName || `${call.first_name} ${call.last_name}`} /></h2><p>Motivo: {call.reason || "Consulta sobre pedido"}</p><p>Número de pedido facilitado: <strong><CopyValue value={call.orderNumber || call.order_number} /></strong></p><p>Teléfono: <CopyValue value={call.phone || "Sin teléfono registrado"} /></p>{call.email && <p>Email: <CopyValue value={call.email} /></p>}</div>
+      <div><span className="pill incoming">Llamada entrante</span><h2><CopyValue value={call.customerName || `${call.first_name} ${call.last_name}`} /></h2><p>Motivo: {call.reason || "Consulta sobre pedido"}</p><p>Número de pedido facilitado: <strong><CopyValue value={call.orderNumber || call.order_number} /></strong></p><p>Teléfono: <CopyValue value={call.phone || "Sin teléfono registrado"} /></p>{call.email && <p>Email: <CopyValue value={call.email} /></p>}<p>Dirección: <CopyValue value={call.address || "Sin dirección registrada"} /></p><p>Código postal: <CopyValue value={call.postalCode || call.postal_code || "Sin código postal"} /></p></div>
       <div className="timer"><Clock />{mmss(elapsed)}</div>
       {call.status !== "active" ? <button onClick={start}>Aceptar llamada</button> : <button onClick={finish}>Finalizar llamada</button>}
     </div>}

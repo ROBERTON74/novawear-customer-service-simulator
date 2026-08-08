@@ -106,9 +106,9 @@ app.get("/api/history", auth, (_req, res) => res.json(all(`SELECT t.*, o.order_n
 
 app.post("/api/training/new-call", auth, (_req, res) => {
   run("UPDATE training_calls SET active=0 WHERE active=1");
-  const order = row(`SELECT o.*, c.first_name, c.last_name, c.phone, c.email FROM orders o JOIN customers c ON c.id=o.customer_id ORDER BY RANDOM() LIMIT 1`);
+  const order = row(`SELECT o.*, c.first_name, c.last_name, c.phone, c.email, c.address, c.postal_code FROM orders o JOIN customers c ON c.id=o.customer_id ORDER BY RANDOM() LIMIT 1`);
   const result = run("INSERT INTO training_calls (customer_id, order_id, scenario_type, active, verification_json, actions_json) VALUES (?, ?, ?, 1, '{}', '{}')", [order.customer_id, order.id, order.order_status]);
-  res.json({ callId: result.lastInsertRowid, customerName: `${order.first_name} ${order.last_name}`, orderNumber: order.order_number, phone: order.phone, email: order.email, reason: "Consulta sobre pedido", status: "incoming" });
+  res.json({ callId: result.lastInsertRowid, customerName: `${order.first_name} ${order.last_name}`, orderNumber: order.order_number, phone: order.phone, email: order.email, address: order.address, postalCode: order.postal_code, reason: "Consulta sobre pedido", status: "incoming" });
 });
 
 app.post("/api/training/:id/start", auth, (req, res) => {
@@ -117,7 +117,7 @@ app.post("/api/training/:id/start", auth, (req, res) => {
 });
 
 app.get("/api/training/active", auth, (_req, res) => {
-  const call = row(`SELECT t.*, o.order_number, c.first_name, c.last_name, c.phone, c.email FROM training_calls t JOIN orders o ON o.id=t.order_id JOIN customers c ON c.id=t.customer_id WHERE t.active=1 ORDER BY t.id DESC LIMIT 1`);
+  const call = row(`SELECT t.*, o.order_number, c.first_name, c.last_name, c.phone, c.email, c.address, c.postal_code FROM training_calls t JOIN orders o ON o.id=t.order_id JOIN customers c ON c.id=t.customer_id WHERE t.active=1 ORDER BY t.id DESC LIMIT 1`);
   res.json(call || null);
 });
 
