@@ -116,3 +116,27 @@ En Vercel:
 - Environment variable: `VITE_STATIC_MODE=true`
 
 Importante: esta versión gratuita guarda llamadas, notas, emails simulados y reembolsos en el navegador de quien entrena mediante `localStorage`. Es perfecta para que Luz practique desde una URL pública, pero no es una base de datos central compartida entre varios dispositivos.
+
+## Seguimiento central con Supabase
+
+Para controlar el avance de Mari Luz desde cualquier ordenador:
+
+1. Crea un proyecto en Supabase.
+2. Abre el SQL Editor de Supabase.
+3. Ejecuta el contenido de `supabase/training_progress.sql`.
+4. En Vercel, añade estas variables de entorno:
+
+```bash
+SUPABASE_URL=https://tu-proyecto.supabase.co
+SUPABASE_SERVICE_ROLE_KEY=tu-service-role-key
+OWNER_DASHBOARD_KEY=una-clave-privada-que-solo-sepas-tu
+```
+
+5. Redeploy en Vercel.
+6. Entra al panel oculto:
+
+```text
+https://novawear-customer-service-simulator.vercel.app/owner-dashboard
+```
+
+Ese panel pide `OWNER_DASHBOARD_KEY` y muestra horas de inicio, horas de fin, tiempo de conexión y registros tratados.

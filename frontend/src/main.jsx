@@ -169,6 +169,28 @@ function startIncomingRing() {
   };
 }
 
+async function recordTrainingProgress(call, scoreData, state, agentName, elapsed) {
+  const finishedAt = new Date().toISOString();
+  const startedAt = call.started_at || new Date(Date.now() - elapsed * 1000).toISOString();
+  await fetch("/api/progress", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      agent_name: agentName || "Mari Luz Sanabria",
+      call_id: call.callId || call.id,
+      order_number: call.orderNumber || call.order_number,
+      customer_name: call.customerName || `${call.first_name || ""} ${call.last_name || ""}`.trim(),
+      scenario_type: scoreData.orderStatus || call.scenario_type,
+      started_at: startedAt,
+      finished_at: finishedAt,
+      score: scoreData.score,
+      actions: state.actions || {},
+      verification: state.verification || {},
+      result: scoreData.result || {}
+    })
+  }).catch(() => {});
+}
+
 function CustomerSearch({ api, onVerified }) {
   const [q, setQ] = useState("");
   const [results, setResults] = useState([]);
@@ -354,13 +376,14 @@ function Training({ api, agentName }) {
   const start = async () => {
     stopRingRef.current?.();
     stopRingRef.current = null;
-    await api(`/training/${call.callId || call.id}/start`, { method: "POST" });
-    setCall({ ...call, status: "active" });
+    const activeCall = await api(`/training/${call.callId || call.id}/start`, { method: "POST" });
+    setCall({ ...call, ...activeCall, status: "active" });
   };
   const finish = async () => {
     stopRingRef.current?.();
     stopRingRef.current = null;
     const data = await api(`/training/${call.callId || call.id}/finish`, { method: "POST", body: JSON.stringify(state) });
+    recordTrainingProgress(call, data, state, agentName, elapsed);
     setScore(data);
     setCall(null);
     setElapsed(0);
@@ -394,9 +417,20 @@ function SimpleTablePage({ api, title, path, cols }) {
 
 function OwnerDashboard({ api }) {
   const [rows, setRows] = useState([]);
-  const isLocal = ["localhost", "127.0.0.1"].includes(window.location.hostname);
-  useEffect(() => { if (isLocal) api("/history").then(setRows); }, [api, isLocal]);
-  if (!isLocal) return <Section title="Dashboard privado"><div className="panel"><p className="muted">Panel disponible solo desde tu ordenador en localhost.</p></div></Section>;
+  const [ownerKey, setOwnerKey] = useState(localStorage.getItem("nw_owner_key") || "");
+  const [error, setError] = useState("");
+  const load = async () => {
+    setError("");
+    localStorage.setItem("nw_owner_key", ownerKey);
+    const response = await fetch("/api/progress", { headers: { "x-owner-key": ownerKey } });
+    if (!response.ok) {
+      setError("Clave privada incorrecta o Supabase no configurado.");
+      setRows([]);
+      return;
+    }
+    setRows(await response.json());
+  };
+  useEffect(() => { if (ownerKey) load(); }, []);
   const finished = rows.filter((row) => row.started_at && row.finished_at);
   const daily = Object.values(finished.reduce((acc, row) => {
     const day = new Date(row.started_at).toLocaleDateString("es-ES");
@@ -404,23 +438,28 @@ function OwnerDashboard({ api }) {
     const end = new Date(row.finished_at);
     const current = acc[day] || { day, first_start: row.started_at, last_end: row.finished_at, records: 0, seconds: 0 };
     current.records += 1;
-    current.seconds += Math.max(0, Math.round((end - start) / 1000));
+    current.seconds += row.duration_seconds || Math.max(0, Math.round((end - start) / 1000));
     if (start < new Date(current.first_start)) current.first_start = row.started_at;
     if (end > new Date(current.last_end)) current.last_end = row.finished_at;
     acc[day] = current;
     return acc;
   }, {})).sort((a, b) => new Date(b.last_end) - new Date(a.last_end));
   return <Section title="Dashboard privado">
+    <div className="panel owner-access">
+      <label>Clave privada<input type="password" value={ownerKey} onChange={(e) => setOwnerKey(e.target.value)} placeholder="Introduce tu clave privada" /></label>
+      <button onClick={load}>Ver avance</button>
+      {error && <div className="alert danger">{error}</div>}
+    </div>
     <div className="metrics">
       <Metric label="Días con actividad" value={daily.length} />
       <Metric label="Registros tratados" value={finished.length} />
-      <Metric label="Tiempo total" value={duration(finished.reduce((sum, row) => sum + Math.max(0, (new Date(row.finished_at) - new Date(row.started_at)) / 1000), 0))} />
+      <Metric label="Tiempo total" value={duration(finished.reduce((sum, row) => sum + (row.duration_seconds || Math.max(0, (new Date(row.finished_at) - new Date(row.started_at)) / 1000)), 0))} />
       <Metric label="Última sesión" value={daily[0]?.day || "Sin datos"} />
     </div>
     <h2>Avance diario de Mari Luz</h2>
     <Table rows={daily} cols={["day", "first_start", "last_end", "seconds", "records"]} />
     <h2>Últimos registros tratados</h2>
-    <Table rows={finished.slice(0, 25)} cols={["id", "order_number", "first_name", "last_name", "scenario_type", "started_at", "finished_at", "score"]} />
+    <Table rows={finished.slice(0, 25)} cols={["id", "order_number", "customer_name", "scenario_type", "started_at", "finished_at", "duration_seconds", "score"]} />
   </Section>;
 }
 
@@ -447,7 +486,7 @@ function App() {
   </Routes></Layout></BrowserRouter>;
 }
 
-function label(k) { return ({ customerIdentification: "Identificación del cliente", verified: "Datos verificados", orderLocated: "Pedido localizado", actionApplied: "Acción aplicada", customerEmail: "Email cliente", carrierEmail: "Email transportista", crmNote: "Nota CRM", customer_number: "ID Cliente", first_name: "Nombre", last_name: "Apellidos", email: "Email", postal_code: "Código postal", day: "Día", first_start: "Hora inicio", last_end: "Hora fin", seconds: "Tiempo conexión", records: "Registros tratados", order_number: "Pedido", order_status: "Estado", total_amount: "Importe", unit_price: "Precio", quantity: "Cantidad" }[k] || k.replaceAll("_", " ")); }
+function label(k) { return ({ customerIdentification: "Identificación del cliente", verified: "Datos verificados", orderLocated: "Pedido localizado", actionApplied: "Acción aplicada", customerEmail: "Email cliente", carrierEmail: "Email transportista", crmNote: "Nota CRM", customer_number: "ID Cliente", customer_name: "Cliente", first_name: "Nombre", last_name: "Apellidos", email: "Email", postal_code: "Código postal", day: "Día", first_start: "Hora inicio", last_end: "Hora fin", seconds: "Tiempo conexión", duration_seconds: "Tiempo conexión", records: "Registros tratados", order_number: "Pedido", order_status: "Estado", total_amount: "Importe", unit_price: "Precio", quantity: "Cantidad" }[k] || k.replaceAll("_", " ")); }
 function fmt(v) { return v ? new Date(v).toLocaleDateString("es-ES") : ""; }
 function fmtTime(v) { return v ? new Date(v).toLocaleString("es-ES") : ""; }
 function money(v) { return new Intl.NumberFormat("es-ES", { style: "currency", currency: "EUR" }).format(v || 0); }
@@ -461,7 +500,7 @@ function duration(seconds) {
 function statusClass(s) { return s === "EN TIEMPO" ? "ok" : s === "RETRASADO" ? "warn" : "danger"; }
 function delayDays(d) { return Math.max(1, Math.ceil((new Date("2026-08-08") - new Date(d)) / 86400000)); }
 function mmss(s) { return `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`; }
-function formatCell(k, v) { if (k === "seconds") return duration(v); if (k.includes("date") || k.includes("created") || k.includes("sent") || k.includes("started") || k.includes("finished") || k.includes("start") || k.includes("end")) return fmtTime(v); if (k.includes("amount") || k.includes("price")) return money(v); return String(v ?? ""); }
+function formatCell(k, v) { if (k === "seconds" || k === "duration_seconds") return duration(v); if (k.includes("date") || k.includes("created") || k.includes("sent") || k.includes("started") || k.includes("finished") || k.includes("start") || k.includes("end")) return fmtTime(v); if (k.includes("amount") || k.includes("price")) return money(v); return String(v ?? ""); }
 async function syncActive(api, type, payload) {
   try {
     const active = await api("/training/active");
