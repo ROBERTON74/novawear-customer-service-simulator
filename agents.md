@@ -22,6 +22,59 @@ https://novawear-customer-service-simulator.vercel.app/owner-dashboard
 
 No guardar claves privadas reales en este archivo ni en GitHub.
 
+## Estructura del proyecto
+
+```text
+novawear-customer-service-simulator/
+├─ api/
+│  └─ progress.js
+├─ backend/
+│  ├─ package.json
+│  └─ src/
+│     ├─ db.js
+│     ├─ seed.js
+│     └─ server.js
+├─ frontend/
+│  ├─ .env.static
+│  ├─ index.html
+│  ├─ package.json
+│  └─ src/
+│     ├─ localApi.js
+│     ├─ main.jsx
+│     └─ styles.css
+├─ supabase/
+│  └─ training_progress.sql
+├─ agents.md
+├─ avance.md
+├─ Dockerfile
+├─ package.json
+├─ README.md
+├─ render.yaml
+└─ vercel.json
+```
+
+### Archivos clave
+
+- `frontend/src/main.jsx`: interfaz principal React, rutas, entrenamiento, CRM, pedidos, dashboard privado y envio de progreso a `/api/progress`.
+- `frontend/src/localApi.js`: API estatica para Vercel gratis. Genera datos ficticios y guarda estado local en el navegador.
+- `frontend/src/styles.css`: estilos visuales.
+- `api/progress.js`: funcion serverless de Vercel. Inserta y lee progreso desde Supabase.
+- `supabase/training_progress.sql`: SQL para crear la tabla central `training_progress`.
+- `backend/src/server.js`: backend Express para modo local/full stack con SQLite.
+- `backend/src/seed.js`: creacion de datos ficticios: clientes, pedidos, transportistas, llamadas y ejemplos.
+- `backend/src/db.js`: conexion SQLite.
+- `vercel.json`: configuracion de despliegue Vercel.
+- `README.md`: instrucciones generales.
+- `avance.md`: resumen de configuracion Supabase/Vercel.
+- `agents.md`: este archivo de handoff para retomar el trabajo.
+
+### Modos de ejecucion
+
+- Vercel publico usa `frontend` en modo estatico y `api/progress.js` como funcion serverless.
+- El simulador de entrenamiento sigue usando datos ficticios en el navegador.
+- El avance real de Mari Luz se debe guardar en Supabase cuando finaliza una llamada.
+- Backend Express + SQLite queda disponible para local/full stack, pero no es la fuente central de progreso en Vercel.
+
 ## Estado funcional de la app
 
 - La app de entrenamiento funciona en Vercel.
