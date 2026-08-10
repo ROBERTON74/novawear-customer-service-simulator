@@ -190,3 +190,129 @@ https://novawear-customer-service-simulator.vercel.app/owner-dashboard
 ```
 
 6. Verificar que `Registros tratados` sube a `1`.
+
+## Estado actualizado final - 10/08/2026
+
+### URLs finales
+
+App de entrenamiento para Mari Luz:
+
+```text
+https://novawear-customer-service-simulator.vercel.app/training
+```
+
+Dashboard privado del propietario:
+
+```text
+https://novawear-customer-service-simulator.vercel.app/owner-dashboard
+```
+
+Repositorio GitHub:
+
+```text
+https://github.com/ROBERTON74/novawear-customer-service-simulator
+```
+
+### Acceso de agente
+
+- Usuario visible en login: `Mari Luz Sanabria`.
+- La contrasena es la misma clave de entrenamiento ya acordada con el propietario.
+- La contrasena no debe escribirse en GitHub, README, `agents.md` ni `avance.md`.
+- La pantalla de login ya no deja la contrasena pre-rellenada.
+- Se mantiene compatibilidad temporal con el usuario antiguo `agente`, por si se escribe por costumbre.
+
+### Acceso del dashboard privado
+
+- El dashboard privado usa `OWNER_DASHBOARD_KEY` configurada en Vercel.
+- La clave privada no se guarda en archivos del repositorio.
+- Las variables de entorno de Vercel ya fueron configuradas en `Production`:
+  - `OWNER_DASHBOARD_KEY`
+  - `SUPABASE_URL`
+  - `SUPABASE_SERVICE_ROLE_KEY`
+- Tras configurar variables se hizo redeploy.
+
+### Supabase y progreso
+
+- Proyecto Supabase conectado: `Entrenamiento novawear`.
+- URL Supabase:
+
+```text
+https://lbpbbecppqsudssupkxf.supabase.co
+```
+
+- Tabla central: `training_progress`.
+- El SQL de creacion/grants esta en `supabase/training_progress.sql`.
+- El dashboard privado lee desde Supabase mediante `/api/progress`.
+- Al finalizar llamadas se insertan registros de avance.
+- La fila de prueba `TEST-SETUP` queda filtrada del dashboard.
+
+### Logica de entrenamiento
+
+Estados de pedido:
+
+- `EN TIEMPO`: se envia email simulado al cliente informando que el pedido esta en plazo y se guarda comentario.
+- `RETRASADO`: se envia email simulado al transportista para entrega urgente y se guarda comentario.
+- `CANCELADO`: se envia email simulado al cliente, se hace reembolso simulado y se guarda comentario.
+
+DPA:
+
+- El boton `No pasa DPA` existe durante la llamada activa.
+- Al pulsarlo abre un cuadro obligatorio para apuntar que dato no coincide.
+- Los clientes que no pasan DPA no se muestran previamente como aviso, para que el entrenamiento sea realista.
+- Aproximadamente el 23% de los registros tienen una discrepancia DPA.
+- Por ahora la discrepancia configurada es solo en el email facilitado durante la llamada; nombre, telefono, direccion y codigo postal coinciden.
+
+Llamadas:
+
+- `Nueva llamada` crea una llamada entrante.
+- Hay sonido simulado de timbre.
+- `Finalizar llamada` cuelga/cierra la llamada y registra el resultado.
+
+### Datos visibles en llamada
+
+La tarjeta de llamada debe mostrar:
+
+- Nombre del cliente.
+- Numero de pedido facilitado.
+- Telefono completo.
+- Email facilitado.
+- Direccion.
+- Codigo postal.
+- Icono de copiar al lado de cada dato relevante.
+
+La ficha del cliente debe permitir cotejar:
+
+- ID cliente.
+- Nombre.
+- DNI.
+- Email.
+- Telefono.
+- Direccion.
+- Codigo postal.
+
+### Commits recientes importantes
+
+```text
+76f7850 Use agent name for login
+38abeb0 Add DPA failure action
+e17e3fa Hide setup test progress row
+d505c64 Fix Supabase progress insert response
+b634f80 Document project structure in handoff
+```
+
+### Verificaciones hechas
+
+- `npm.cmd run vercel-build` paso correctamente tras el cambio de login.
+- El repositorio local quedo limpio despues del push.
+- GitHub contiene el ultimo commit `76f7850`.
+- Vercel debe redesplegar automaticamente desde `main`.
+
+### Pendiente solo de comprobacion manual
+
+1. Abrir la URL de entrenamiento.
+2. Entrar con usuario `Mari Luz Sanabria` y la clave de entrenamiento.
+3. Crear una llamada y finalizarla.
+4. Abrir el dashboard privado.
+5. Confirmar que el contador de registros tratados sube.
+
+Nota de seguridad: no pegar en este archivo claves secretas de Supabase, claves privadas de Vercel ni contrasenas reales.
