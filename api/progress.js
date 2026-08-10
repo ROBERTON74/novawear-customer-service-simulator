@@ -60,7 +60,7 @@ export default async function handler(req, res) {
       const ownerKey = req.headers["x-owner-key"];
       if (!OWNER_DASHBOARD_KEY) return json(res, 500, { error: "Falta OWNER_DASHBOARD_KEY en Vercel" });
       if (ownerKey !== OWNER_DASHBOARD_KEY) return json(res, 403, { error: "Clave privada incorrecta" });
-      const rows = await supabaseRequest("training_progress?select=*&order=finished_at.desc&limit=500");
+      const rows = await supabaseRequest("training_progress?select=*&order_number=neq.TEST-SETUP&order=finished_at.desc&limit=500");
       return json(res, 200, rows);
     }
 
