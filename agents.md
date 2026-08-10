@@ -86,7 +86,9 @@ novawear-customer-service-simulator/
   - `CANCELADO`: enviar email al cliente, hacer reembolso y guardar comentario.
 - Al finalizar llamada, la tarjeta se cierra como si se colgara.
 - Hay timbre simulado al crear llamada entrante.
-- `NO DPA` ya no se muestra en el entrenamiento ni revela casos.
+- `No pasa DPA` debe existir como accion durante la llamada activa.
+- Al pulsarlo abre un cuadro de comentario obligatorio para apuntar que dato no coincide.
+- No debe revelar previamente que clientes fallan DPA.
 - En un 23% de clientes, solo el email facilitado en llamada no coincide con el email de ficha.
 
 ## Supabase

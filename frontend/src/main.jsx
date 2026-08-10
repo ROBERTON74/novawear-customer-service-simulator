@@ -352,6 +352,8 @@ function Training({ api, agentName }) {
   const stopRingRef = useRef(null);
   const [elapsed, setElapsed] = useState(0);
   const [state, setState] = useState({ actions: {}, verification: {} });
+  const [dpaOpen, setDpaOpen] = useState(false);
+  const [dpaComment, setDpaComment] = useState("");
   const [score, setScore] = useState(null);
   useEffect(() => { api("/training/active").then((c) => c && setCall({ ...c, status: c.started_at ? "active" : "incoming" })); }, [api]);
   useEffect(() => {
@@ -369,6 +371,8 @@ function Training({ api, agentName }) {
     stopRingRef.current = startIncomingRing();
     setScore(null);
     setElapsed(0);
+    setDpaOpen(false);
+    setDpaComment("");
     setState({ actions: {}, verification: {} });
     const nextCall = await api("/training/new-call", { method: "POST" });
     setCall(nextCall);
@@ -387,9 +391,19 @@ function Training({ api, agentName }) {
     setScore(data);
     setCall(null);
     setElapsed(0);
+    setDpaOpen(false);
+    setDpaComment("");
     setState({ actions: {}, verification: {} });
   };
   const updateState = (next) => { setState(next); if (call) api(`/training/${call.callId || call.id}/verify`, { method: "PATCH", body: JSON.stringify(next.verification || {}) }).catch(() => {}); };
+  const saveDpaFailure = () => {
+    const comment = dpaComment.trim();
+    if (!comment) return;
+    const next = { ...state, actions: { ...state.actions, dpaFailed: true, dpaComment: comment } };
+    setState(next);
+    syncActive(api, "actions", next.actions);
+    setDpaOpen(false);
+  };
   return <Section title="Centro de entrenamiento">
     <div className="training-bar">
       <button onClick={newCall}>Nueva llamada</button>
@@ -402,9 +416,11 @@ function Training({ api, agentName }) {
       {call.status !== "active" ? <button onClick={start}>Aceptar llamada</button> : <button onClick={finish}>Finalizar llamada</button>}
     </div>}
     {call?.status === "active" && <div className="split-work">
+      <div className="panel dpa-action"><h2>Verificación DPA</h2><button className="danger-button" onClick={() => { setDpaComment(state.actions.dpaComment || ""); setDpaOpen(true); }}>No pasa DPA</button>{state.actions.dpaFailed && <div className="alert danger">DPA no superada: {state.actions.dpaComment}</div>}</div>
       <CustomerSearch api={api} onVerified={(patch) => setState((s) => ({ ...s, actions: { ...s.actions, ...(patch.customerFound ? { customerFound: true } : {}) }, verification: patch.verification || s.verification }))} />
       <OrderTool api={api} trainingState={state} setTrainingState={updateState} agentName={agentName} />
     </div>}
+    {dpaOpen && <div className="modal"><div className="modal-body"><h2>No pasa DPA</h2><label>Dato que no coincide<textarea value={dpaComment} onChange={(e) => setDpaComment(e.target.value)} placeholder="Ejemplo: El email facilitado no coincide con el email de la ficha del cliente." /></label><button disabled={!dpaComment.trim()} onClick={saveDpaFailure}>Guardar comentario DPA</button><button className="secondary" onClick={() => setDpaOpen(false)}>Cerrar</button></div></div>}
     {score && <div className="panel result"><h2>Resultado del ejercicio</h2><div className="detail">{Object.entries(score.result).map(([k, v]) => <React.Fragment key={k}><b>{label(k)}</b><span>{v}</span></React.Fragment>)}<b>Tiempo llamada</b><span>{mmss(elapsed)}</span><b>Puntuación</b><span>{score.score}/100</span></div></div>}
   </Section>;
 }

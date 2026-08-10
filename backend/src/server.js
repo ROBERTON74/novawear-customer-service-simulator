@@ -201,6 +201,7 @@ app.post("/api/training/:id/finish", auth, (req, res) => {
   const result = {
     customerIdentification: actions.customerFound ? "Correcta" : "Incorrecta",
     verified: `${verifiedCount}/4`,
+    dpa: actions.dpaFailed ? `No superada: ${actions.dpaComment || "Sin detalle"}` : "No marcada",
     orderLocated: actions.orderFound ? "Correcto" : "Incorrecto",
     actionApplied: actions.correctAction ? "Correcta" : "Revisar",
     customerEmail: order.order_status === "RETRASADO" ? "No necesario" : (actions.customerEmailSent ? "Correcto" : "Incorrecto"),

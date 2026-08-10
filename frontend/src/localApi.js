@@ -234,7 +234,7 @@ export async function localApi(path, options = {}) {
       call.finished_at = nowIso();
       call.active = 0;
       call.score = score;
-      call.result = JSON.stringify({ customerIdentification: actions.customerFound ? "Correcta" : "Incorrecta", verified: `${verifiedCount}/4`, orderLocated: actions.orderFound ? "Correcto" : "Incorrecto", actionApplied: actions.correctAction ? "Correcta" : "Revisar", customerEmail: order.order_status === "RETRASADO" ? "No necesario" : (actions.customerEmailSent ? "Correcto" : "Incorrecto"), carrierEmail: order.order_status === "RETRASADO" ? (actions.emailSent ? "Correcto" : "Incorrecto") : "No necesario", refund: order.order_status === "CANCELADO" ? (actions.refundProcessed ? "Correcto" : "Incorrecto") : "No necesario", crmNote: actions.noteSaved ? "Realizada" : "No realizada" });
+      call.result = JSON.stringify({ customerIdentification: actions.customerFound ? "Correcta" : "Incorrecta", verified: `${verifiedCount}/4`, dpa: actions.dpaFailed ? `No superada: ${actions.dpaComment || "Sin detalle"}` : "No marcada", orderLocated: actions.orderFound ? "Correcto" : "Incorrecto", actionApplied: actions.correctAction ? "Correcta" : "Revisar", customerEmail: order.order_status === "RETRASADO" ? "No necesario" : (actions.customerEmailSent ? "Correcto" : "Incorrecto"), carrierEmail: order.order_status === "RETRASADO" ? (actions.emailSent ? "Correcto" : "Incorrecto") : "No necesario", refund: order.order_status === "CANCELADO" ? (actions.refundProcessed ? "Correcto" : "Incorrecto") : "No necesario", crmNote: actions.noteSaved ? "Realizada" : "No realizada" });
       return withSave({ result: JSON.parse(call.result), score, orderStatus: order.order_status });
     }
     return withSave(call);
