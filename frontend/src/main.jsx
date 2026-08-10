@@ -87,8 +87,8 @@ function Layout({ user, children }) {
 }
 
 function Login({ login }) {
-  const [username, setUsername] = useState("agente");
-  const [password, setPassword] = useState("novawear123");
+  const [username, setUsername] = useState("Mari Luz Sanabria");
+  const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   return <div className="login">
     <form onSubmit={async (e) => { e.preventDefault(); try { await login(username, password); } catch (err) { setError(err.message); } }}>

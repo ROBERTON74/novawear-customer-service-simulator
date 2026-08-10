@@ -39,8 +39,8 @@ npm.cmd run dev
 
 ## Usuario de prueba
 
-- Usuario: `agente`
-- Contraseña: `novawear123`
+- Usuario: `Mari Luz Sanabria`
+- Contraseña: la misma clave de acceso de entrenamiento
 
 ## Uso en dos monitores
 
@@ -100,8 +100,8 @@ DB_PATH=/data/novawear.sqlite
 
 Después de publicar, se entra con:
 
-- Usuario: `agente`
-- Contraseña: `novawear123`
+- Usuario: `Mari Luz Sanabria`
+- Contraseña: la misma clave de acceso de entrenamiento
 - Agente mostrado: `Mari Luz Sanabria`
 
 ## Vercel gratis

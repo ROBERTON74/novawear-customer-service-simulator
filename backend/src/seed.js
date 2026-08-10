@@ -24,6 +24,7 @@ const carriers = [
 const cancelReasons = ["Rotura de stock", "Incidencia logistica", "Error en almacen", "Pedido danado", "Problema de preparacion"];
 const statuses = ["EN TIEMPO", "RETRASADO", "CANCELADO"];
 const sizes = ["XS", "S", "M", "L", "XL", "39", "40", "41", "42", "U"];
+const DEFAULT_TRAINING_PASSWORD_HASH = "143d14fb75efa4492fae9c298b11389a8c6616e6757a1edfd5c30d147c653290";
 
 function pick(list) {
   return list[Math.floor(Math.random() * list.length)];
@@ -152,7 +153,8 @@ export function migrate() {
 export function seed() {
   migrate();
   if (row("SELECT COUNT(*) AS count FROM customers").count > 0) {
-    db.prepare("UPDATE users SET name = ? WHERE username = ?").run("Mari Luz Sanabria", "agente");
+    db.prepare("UPDATE users SET username = ?, name = ? WHERE username = ?").run("Mari Luz Sanabria", "Mari Luz Sanabria", "agente");
+    db.prepare("UPDATE users SET name = ? WHERE username = ?").run("Mari Luz Sanabria", "Mari Luz Sanabria");
     db.prepare(`UPDATE customers
       SET email = lower(first_name || '.' || replace(last_name, ' ', '.') || id || '@example.com')
       WHERE email IS NULL OR trim(email) = ''`).run();
@@ -160,7 +162,7 @@ export function seed() {
   }
 
   const insertUser = db.prepare("INSERT INTO users (username, password_hash, name, role) VALUES (?, ?, ?, ?)");
-  insertUser.run("agente", hash("novawear123"), "Mari Luz Sanabria", "training_agent");
+  insertUser.run("Mari Luz Sanabria", process.env.TRAINING_PASSWORD_HASH || DEFAULT_TRAINING_PASSWORD_HASH, "Mari Luz Sanabria", "training_agent");
 
   const insertCarrier = db.prepare("INSERT INTO carriers (name, email, phone) VALUES (?, ?, ?)");
   carriers.forEach((c) => insertCarrier.run(...c));
@@ -218,7 +220,7 @@ export function seed() {
   insertItem.run(firstOrderId, "Vestido Linen Summer", "Vestidos", "M", 1, 39.95);
   insertItem.run(firstOrderId, "Zapatillas Urban White", "Calzado", "40", 1, 50.0);
 
-  const agentId = row("SELECT id FROM users WHERE username='agente'").id;
+  const agentId = row("SELECT id FROM users WHERE username='Mari Luz Sanabria'").id;
   db.prepare("INSERT INTO customer_interactions (customer_id, order_id, agent_id, interaction_type, notes, created_at) VALUES (?, ?, ?, ?, ?, ?)").run(1, firstOrderId, agentId, "Nota historica", "Cliente consulta plazo de entrega en pedido anterior. Se informa correctamente.", "2026-07-18T11:20:00.000Z");
   db.prepare("INSERT INTO carrier_emails (order_id, carrier_id, agent_id, recipient, subject, message, sent_at) VALUES (?, ?, ?, ?, ?, ?, ?)").run(firstOrderId, 1, agentId, "incidencias@rapidgo.test", "Consulta previa NV-284739", "Comunicacion simulada de ejemplo.", "2026-08-07T09:42:00.000Z");
   db.prepare("INSERT INTO refunds (order_id, customer_id, amount, reason, reference, created_at) VALUES (?, ?, ?, ?, ?, ?)").run(2, 1, 24.95, "Devolucion parcial de ejemplo", "RF-120045", "2026-07-22T15:12:00.000Z");

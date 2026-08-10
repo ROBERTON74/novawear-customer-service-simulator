@@ -13,6 +13,7 @@ console.log("Base de datos NOVAWEAR lista con datos ficticios.");
 const app = express();
 const PORT = process.env.PORT || 4000;
 const sessions = new Map();
+const TRAINING_PASSWORD_HASH = process.env.TRAINING_PASSWORD_HASH || "143d14fb75efa4492fae9c298b11389a8c6616e6757a1edfd5c30d147c653290";
 
 app.use(cors({ origin: true, credentials: true }));
 app.use(express.json({ limit: "1mb" }));
@@ -52,7 +53,10 @@ function orderDetails(orderNumberOrId, byNumber = true) {
 }
 
 app.post("/api/login", (req, res) => {
-  const user = row("SELECT * FROM users WHERE username=? AND password_hash=?", [req.body.username, hash(req.body.password)]);
+  const username = String(req.body.username || "").trim();
+  const passwordHash = hash(req.body.password || "");
+  if (passwordHash !== TRAINING_PASSWORD_HASH) return res.status(401).json({ error: "Credenciales incorrectas" });
+  const user = row("SELECT * FROM users WHERE username=? OR (?='agente' AND username='Mari Luz Sanabria')", [username, username.toLowerCase()]);
   if (!user) return res.status(401).json({ error: "Credenciales incorrectas" });
   const token = crypto.randomUUID();
   sessions.set(token, user.id);

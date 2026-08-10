@@ -1,4 +1,5 @@
 const STORE_KEY = "novawear_static_store_v1";
+const TRAINING_PASSWORD_HASH = import.meta.env.VITE_TRAINING_PASSWORD_HASH || "143d14fb75efa4492fae9c298b11389a8c6616e6757a1edfd5c30d147c653290";
 
 const firstNames = ["Laura", "Sofia", "Marta", "Carmen", "Lucia", "Paula", "Elena", "Irene", "Nuria", "Clara", "Diego", "Javier", "Pablo", "Sergio", "Alvaro", "Marcos", "Hugo", "Adrian", "Daniel", "Ivan"];
 const lastNames = ["Martinez", "Garcia", "Lopez", "Sanchez", "Fernandez", "Gomez", "Ruiz", "Diaz", "Moreno", "Alvarez", "Romero", "Navarro", "Torres", "Vazquez", "Ortega"];
@@ -100,7 +101,7 @@ function makeStore() {
   firstItems.push({ id: firstItems.length + 1, order_id: 1, product_name: "Vestido Linen Summer", category: "Vestidos", size: "M", quantity: 1, unit_price: 39.95 });
   firstItems.push({ id: firstItems.length + 1, order_id: 1, product_name: "Zapatillas Urban White", category: "Calzado", size: "40", quantity: 1, unit_price: 50 });
   return {
-    user: { id: 1, username: "agente", name: "Mari Luz Sanabria", role: "training_agent" },
+    user: { id: 1, username: "Mari Luz Sanabria", name: "Mari Luz Sanabria", role: "training_agent" },
     customers,
     orders,
     orderItems: firstItems,
@@ -149,8 +150,16 @@ function joinOrder(store, order) {
 }
 
 export async function localLogin(username, password) {
-  if (username !== "agente" || password !== "novawear123") throw new Error("Credenciales incorrectas");
+  const normalized = username.trim().toLowerCase();
+  const passwordHash = await sha256(password);
+  if (!["mari luz sanabria", "agente"].includes(normalized) || passwordHash !== TRAINING_PASSWORD_HASH) throw new Error("Credenciales incorrectas");
   return { token: "static-token", user: load().user };
+}
+
+async function sha256(value) {
+  const bytes = new TextEncoder().encode(String(value || ""));
+  const digest = await crypto.subtle.digest("SHA-256", bytes);
+  return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join("");
 }
 
 export async function localMe() {
