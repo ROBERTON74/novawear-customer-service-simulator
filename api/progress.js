@@ -23,8 +23,9 @@ async function supabaseRequest(path, options = {}) {
     const text = await response.text();
     throw new Error(`Supabase respondió ${response.status}: ${text || "sin detalle"}`);
   }
-  if (response.status === 204) return null;
-  return response.json();
+  const text = await response.text();
+  if (!text) return null;
+  return JSON.parse(text);
 }
 
 export default async function handler(req, res) {
