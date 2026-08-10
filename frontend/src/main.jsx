@@ -424,7 +424,8 @@ function OwnerDashboard({ api }) {
     localStorage.setItem("nw_owner_key", ownerKey);
     const response = await fetch("/api/progress", { headers: { "x-owner-key": ownerKey } });
     if (!response.ok) {
-      setError("Clave privada incorrecta o Supabase no configurado.");
+      const detail = await response.json().catch(() => ({}));
+      setError(detail.error || "No se pudo cargar el dashboard privado.");
       setRows([]);
       return;
     }

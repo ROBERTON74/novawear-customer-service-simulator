@@ -8,9 +8,8 @@ function json(res, status, body) {
 }
 
 async function supabaseRequest(path, options = {}) {
-  if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
-    throw new Error("Supabase no configurado");
-  }
+  if (!SUPABASE_URL) throw new Error("Falta SUPABASE_URL en Vercel");
+  if (!SUPABASE_SERVICE_ROLE_KEY) throw new Error("Falta SUPABASE_SERVICE_ROLE_KEY en Vercel");
   const response = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
     ...options,
     headers: {
@@ -22,7 +21,7 @@ async function supabaseRequest(path, options = {}) {
   });
   if (!response.ok) {
     const text = await response.text();
-    throw new Error(text || `Supabase respondió ${response.status}`);
+    throw new Error(`Supabase respondió ${response.status}: ${text || "sin detalle"}`);
   }
   if (response.status === 204) return null;
   return response.json();
@@ -58,9 +57,8 @@ export default async function handler(req, res) {
 
     if (req.method === "GET") {
       const ownerKey = req.headers["x-owner-key"];
-      if (!OWNER_DASHBOARD_KEY || ownerKey !== OWNER_DASHBOARD_KEY) {
-        return json(res, 403, { error: "Acceso privado" });
-      }
+      if (!OWNER_DASHBOARD_KEY) return json(res, 500, { error: "Falta OWNER_DASHBOARD_KEY en Vercel" });
+      if (ownerKey !== OWNER_DASHBOARD_KEY) return json(res, 403, { error: "Clave privada incorrecta" });
       const rows = await supabaseRequest("training_progress?select=*&order=finished_at.desc&limit=500");
       return json(res, 200, rows);
     }
