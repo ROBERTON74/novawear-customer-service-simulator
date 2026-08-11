@@ -388,7 +388,7 @@ function Training({ api, agentName }) {
     stopRingRef.current = null;
     const data = await api(`/training/${call.callId || call.id}/finish`, { method: "POST", body: JSON.stringify(state) });
     recordTrainingProgress(call, data, state, agentName, elapsed);
-    setScore(data);
+    setScore({ ...data, durationSeconds: elapsed });
     setCall(null);
     setElapsed(0);
     setDpaOpen(false);
@@ -421,7 +421,7 @@ function Training({ api, agentName }) {
       <OrderTool api={api} trainingState={state} setTrainingState={updateState} agentName={agentName} />
     </div>}
     {dpaOpen && <div className="modal"><div className="modal-body"><h2>No pasa DPA</h2><label>Dato que no coincide<textarea value={dpaComment} onChange={(e) => setDpaComment(e.target.value)} placeholder="Ejemplo: El email facilitado no coincide con el email de la ficha del cliente." /></label><button disabled={!dpaComment.trim()} onClick={saveDpaFailure}>Guardar comentario DPA</button><button className="secondary" onClick={() => setDpaOpen(false)}>Cerrar</button></div></div>}
-    {score && <div className="panel result"><h2>Resultado del ejercicio</h2><div className="detail">{Object.entries(score.result).map(([k, v]) => <React.Fragment key={k}><b>{label(k)}</b><span>{v}</span></React.Fragment>)}<b>Tiempo llamada</b><span>{mmss(elapsed)}</span><b>Puntuación</b><span>{score.score}/100</span></div></div>}
+    {score && <div className="panel result"><h2>Resultado del ejercicio</h2><div className="detail">{Object.entries(score.result).map(([k, v]) => <React.Fragment key={k}><b>{label(k)}</b><span>{v}</span></React.Fragment>)}<b>Tiempo llamada</b><span>{mmss(score.durationSeconds || elapsed)}</span><b>Puntuación</b><span>{score.score}/100</span></div></div>}
   </Section>;
 }
 
