@@ -172,6 +172,7 @@ function startIncomingRing() {
 async function recordTrainingProgress(call, scoreData, state, agentName, elapsed) {
   const finishedAt = new Date().toISOString();
   const startedAt = call.started_at || new Date(Date.now() - elapsed * 1000).toISOString();
+  const dpaAudit = buildDpaAudit(call, state);
   await fetch("/api/progress", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -184,11 +185,27 @@ async function recordTrainingProgress(call, scoreData, state, agentName, elapsed
       started_at: startedAt,
       finished_at: finishedAt,
       score: scoreData.score,
-      actions: state.actions || {},
+      actions: { ...(state.actions || {}), dpaAudit },
       verification: state.verification || {},
-      result: scoreData.result || {}
+      result: { ...(scoreData.result || {}), dpaAudit }
     })
   }).catch(() => {});
+}
+
+function buildDpaAudit(call, state) {
+  const providedEmail = call.email || "";
+  const expectedEmail = providedEmail.includes(".consulta@") ? providedEmail.replace(".consulta@", "@") : providedEmail;
+  const expectedFailed = Boolean(providedEmail && expectedEmail && providedEmail !== expectedEmail);
+  const markedFailed = Boolean(state.actions?.dpaFailed);
+  return {
+    expectedFailed,
+    markedFailed,
+    missedFailure: expectedFailed && !markedFailed,
+    field: expectedFailed ? "email" : null,
+    providedEmail,
+    expectedEmail,
+    comment: state.actions?.dpaComment || ""
+  };
 }
 
 function CustomerSearch({ api, onVerified }) {
@@ -461,6 +478,7 @@ function OwnerDashboard({ api }) {
     acc[day] = current;
     return acc;
   }, {})).sort((a, b) => new Date(b.last_end) - new Date(a.last_end));
+  const dpaMisses = finished.map(dpaMissRow).filter(Boolean);
   return <Section title="Dashboard privado">
     <div className="panel owner-access">
       <label>Clave privada<input type="password" value={ownerKey} onChange={(e) => setOwnerKey(e.target.value)} placeholder="Introduce tu clave privada" /></label>
@@ -475,9 +493,39 @@ function OwnerDashboard({ api }) {
     </div>
     <h2>Avance diario de Mari Luz</h2>
     <Table rows={daily} cols={["day", "first_start", "last_end", "seconds", "records"]} />
+    <h2>Fallos DPA detectados</h2>
+    <p className="muted">Casos donde el email facilitado no coincidia con la ficha y no se marco No pasa DPA.</p>
+    <Table rows={dpaMisses} cols={["finished_at", "order_number", "customer_name", "field", "providedEmail", "expectedEmail", "dpaComment"]} />
     <h2>Últimos registros tratados</h2>
     <Table rows={finished.slice(0, 25)} cols={["id", "order_number", "customer_name", "scenario_type", "started_at", "finished_at", "duration_seconds", "score"]} />
   </Section>;
+}
+
+function dpaMissRow(row) {
+  const actions = parseJsonField(row.actions);
+  const result = parseJsonField(row.result);
+  const audit = actions.dpaAudit || result.dpaAudit || {};
+  if (!audit.missedFailure) return null;
+  return {
+    id: row.id,
+    finished_at: row.finished_at,
+    order_number: row.order_number,
+    customer_name: row.customer_name,
+    field: audit.field || "email",
+    providedEmail: audit.providedEmail || "",
+    expectedEmail: audit.expectedEmail || "",
+    dpaComment: audit.comment || "No marcado"
+  };
+}
+
+function parseJsonField(value) {
+  if (!value) return {};
+  if (typeof value === "object") return value;
+  try {
+    return JSON.parse(value);
+  } catch {
+    return {};
+  }
 }
 
 function Table({ rows = [], cols = [] }) {
@@ -503,7 +551,7 @@ function App() {
   </Routes></Layout></BrowserRouter>;
 }
 
-function label(k) { return ({ customerIdentification: "Identificación del cliente", verified: "Datos verificados", orderLocated: "Pedido localizado", actionApplied: "Acción aplicada", customerEmail: "Email cliente", carrierEmail: "Email transportista", crmNote: "Nota CRM", customer_number: "ID Cliente", customer_name: "Cliente", first_name: "Nombre", last_name: "Apellidos", email: "Email", postal_code: "Código postal", day: "Día", first_start: "Hora inicio", last_end: "Hora fin", seconds: "Tiempo conexión", duration_seconds: "Tiempo conexión", records: "Registros tratados", order_number: "Pedido", order_status: "Estado", total_amount: "Importe", unit_price: "Precio", quantity: "Cantidad" }[k] || k.replaceAll("_", " ")); }
+function label(k) { return ({ customerIdentification: "Identificación del cliente", verified: "Datos verificados", orderLocated: "Pedido localizado", actionApplied: "Acción aplicada", customerEmail: "Email cliente", carrierEmail: "Email transportista", crmNote: "Nota CRM", customer_number: "ID Cliente", customer_name: "Cliente", first_name: "Nombre", last_name: "Apellidos", email: "Email", postal_code: "Código postal", day: "Día", first_start: "Hora inicio", last_end: "Hora fin", seconds: "Tiempo conexión", duration_seconds: "Tiempo conexión", records: "Registros tratados", order_number: "Pedido", order_status: "Estado", total_amount: "Importe", unit_price: "Precio", quantity: "Cantidad", field: "Dato fallado", providedEmail: "Email facilitado", expectedEmail: "Email ficha", dpaComment: "Comentario DPA" }[k] || k.replaceAll("_", " ")); }
 function fmt(v) { return v ? new Date(v).toLocaleDateString("es-ES") : ""; }
 function fmtTime(v) { return v ? new Date(v).toLocaleString("es-ES") : ""; }
 function money(v) { return new Intl.NumberFormat("es-ES", { style: "currency", currency: "EUR" }).format(v || 0); }
